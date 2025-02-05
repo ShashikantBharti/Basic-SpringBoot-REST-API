@@ -82,16 +82,23 @@ public class TodoService {
      *                                  or does not contain required fields.
      */
     public Todo createTodo(Todo todo) {
-        if(todo == null) {
+        logger.info("Attempting to create a new Todo item");
+
+        if (todo == null) {
+            logger.error("Failed to create Todo: Todo cannot be null");
             throw new IllegalArgumentException("Todo cannot be null");
         }
 
-        if(todo.getTitle() == null || todo.getDescription() == null) {
+        if (todo.getTitle() == null || todo.getDescription() == null) {
+            logger.error("Failed to create Todo: Title and description cannot be null");
             throw new IllegalArgumentException("Todo title and description cannot be null");
         }
 
         todo.setDateTime(LocalDateTime.now());
-        return todoRepository.save(todo);
+        Todo savedTodo = todoRepository.save(todo);
+        logger.info("Successfully created Todo item with ID: {}", savedTodo.getTodoId());
+
+        return savedTodo;
     }
 
     /**
@@ -124,8 +131,8 @@ public class TodoService {
 
         // Update fields
         Todo existingTodo = existingTodoOptional.get();
-        existingTodo.setTitle(todo.getTitle());
-        existingTodo.setDescription(todo.getDescription());
+        existingTodo.setTitle(todo.getTitle() != null && !todo.getTitle().isEmpty() ? todo.getTitle() : existingTodo.getTitle());
+        existingTodo.setDescription(todo.getDescription() != null && !todo.getDescription().isEmpty() ? todo.getDescription() : existingTodo.getDescription());
         existingTodo.setDateTime(LocalDateTime.now()); // Optionally update timestamp
 
         // Save updated Todo

@@ -53,6 +53,7 @@ public class TodoController {
         logger.info("Fetching Todo item with ID: {}", todoId);
         Todo todo = todoService.getTodoById(todoId)
                 .orElseThrow(() -> new NotFoundException("Todo item not found with ID: " + todoId));
+        logger.info("Todo item fetched with ID: {}", todoId);
         return ResponseEntity.ok(todo);
     }
 
