@@ -1,7 +1,7 @@
 package com.todoapp.todo.controllers;
 
+import com.todoapp.todo.dtos.TodoDto;
 import com.todoapp.todo.exceptions.NotFoundException;
-import com.todoapp.todo.models.Todo;
 import com.todoapp.todo.services.TodoService;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
@@ -35,9 +35,9 @@ public class TodoController {
      * @return A ResponseEntity containing a list of all Todo items and an HTTP status.
      */
     @GetMapping
-    public ResponseEntity<List<Todo>> getAllTodos() {
+    public ResponseEntity<List<TodoDto>> getAllTodos() {
         logger.info("Fetching all Todo items");
-        List<Todo> todos = todoService.getAllTodos();
+        List<TodoDto> todos = todoService.getAllTodos();
         return ResponseEntity.ok(todos);
     }
 
@@ -49,9 +49,9 @@ public class TodoController {
      * @throws NotFoundException if no Todo item with the specified ID exists.
      */
     @GetMapping("/{todoId}")
-    public ResponseEntity<Todo> getTodoById(@PathVariable ObjectId todoId) {
+    public ResponseEntity<TodoDto> getTodoById(@PathVariable ObjectId todoId) {
         logger.info("Fetching Todo item with ID: {}", todoId);
-        Todo todo = todoService.getTodoById(todoId)
+        TodoDto todo = todoService.getTodoById(todoId)
                 .orElseThrow(() -> new NotFoundException("Todo item not found with ID: " + todoId));
         logger.info("Todo item fetched with ID: {}", todoId);
         return ResponseEntity.ok(todo);
@@ -64,9 +64,9 @@ public class TodoController {
      * @return A ResponseEntity containing the created Todo item and an HTTP status.
      */
     @PostMapping
-    public ResponseEntity<Todo> createTodo(@RequestBody Todo todo) {
+    public ResponseEntity<TodoDto> createTodo(@RequestBody TodoDto todo) {
         logger.info("Creating a new Todo item");
-        Todo createdTodo = todoService.createTodo(todo);
+        TodoDto createdTodo = todoService.createTodo(todo);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdTodo);
     }
 
@@ -79,10 +79,9 @@ public class TodoController {
      * @throws NotFoundException if no Todo item with the specified ID exists.
      */
     @PutMapping("/{todoId}")
-    public ResponseEntity<Todo> updateTodo(@PathVariable ObjectId todoId, @RequestBody Todo todo) {
+    public ResponseEntity<TodoDto> updateTodo(@PathVariable String todoId, @RequestBody TodoDto todo) {
         logger.info("Updating Todo item with ID: {}", todoId);
-        todo.setTodoId(todoId); // Ensure the ID in the request matches the path variable
-        Todo updatedTodo = todoService.updateTodo(todo, todoId);
+        TodoDto updatedTodo = todoService.updateTodo(todo, todoId);
         return ResponseEntity.ok(updatedTodo);
     }
 
@@ -94,7 +93,7 @@ public class TodoController {
      * @throws NotFoundException if no Todo item with the specified ID exists.
      */
     @DeleteMapping("/{todoId}")
-    public ResponseEntity<Void> deleteTodoById(@PathVariable ObjectId todoId) {
+    public ResponseEntity<Void> deleteTodoById(@PathVariable String todoId) {
         logger.info("Deleting Todo item with ID: {}", todoId);
         todoService.deleteTodoById(todoId);
         return ResponseEntity.noContent().build(); // 204 No Content

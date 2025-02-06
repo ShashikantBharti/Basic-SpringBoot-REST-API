@@ -1,5 +1,6 @@
 package com.todoapp.todo.services;
 
+import com.todoapp.todo.dtos.TodoDto;
 import com.todoapp.todo.exceptions.NotFoundException;
 import com.todoapp.todo.models.Todo;
 import com.todoapp.todo.repositories.TodoRepository;
@@ -7,6 +8,7 @@ import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.modelmapper.ModelMapper;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -21,9 +23,11 @@ public class TodoService {
 
     private static final Logger logger = LoggerFactory.getLogger(TodoService.class);
     private final TodoRepository todoRepository;
+    private final ModelMapper modelMapper;
 
-    public TodoService(TodoRepository todoRepository) {
+    public TodoService(TodoRepository todoRepository, ModelMapper modelMapper) {
         this.todoRepository = todoRepository;
+        this.modelMapper = modelMapper;
     }
 
     /**
@@ -37,13 +41,14 @@ public class TodoService {
      * @return An unmodifiable list of all Todo items. If no items exist,
      *         an empty list is returned.
      */
-    public List<Todo> getAllTodos() {
+    public List<TodoDto> getAllTodos() {
         logger.info("Fetching all Todo items from the repository");
 
         List<Todo> todos = todoRepository.findAll();
+        List<TodoDto> todoDtos = todos.stream().map(todo -> modelMapper.map(todo, TodoDto.class)).toList();
         logger.info("Retrieved {} Todo items", todos.size());
 
-        return Collections.unmodifiableList(todos);
+        return todoDtos;
     }
 
     /**
@@ -57,13 +62,14 @@ public class TodoService {
      * @return An Optional containing the Todo item if found.
      * @throws NotFoundException if no Todo item with the specified ID exists.
      */
-    public Optional<Todo> getTodoById(ObjectId todoId) {
+    public Optional<TodoDto> getTodoById(ObjectId todoId) {
         logger.info("Fetching Todo item with ID: {}", todoId);
-        return todoRepository.findById(todoId)
+        Optional<Todo> todo = todoRepository.findById(todoId)
                 .or(() -> {
                     logger.warn("Todo item with ID {} not found", todoId);
                     throw new NotFoundException("Todo item not found with ID: " + todoId);
                 });
+        return Optional.ofNullable(modelMapper.map(todo, TodoDto.class));
     }
 
 
@@ -75,30 +81,32 @@ public class TodoService {
      * using the Todo repository. The saved Todo object, which includes
      * any generated fields (like ID), is returned.
      *
-     * @param todo The Todo object to be created. It should not be null
+     * @param todoDto The Todo object to be created. It should not be null
      *             and must contain the necessary fields (title, description).
      * @return The saved Todo object, including its generated ID and timestamp.
      * @throws IllegalArgumentException if the provided Todo object is null
      *                                  or does not contain required fields.
      */
-    public Todo createTodo(Todo todo) {
+    public TodoDto createTodo(TodoDto todoDto) {
         logger.info("Attempting to create a new Todo item");
 
-        if (todo == null) {
+        if (todoDto == null) {
             logger.error("Failed to create Todo: Todo cannot be null");
             throw new IllegalArgumentException("Todo cannot be null");
         }
 
-        if (todo.getTitle() == null || todo.getDescription() == null) {
+        if (todoDto.getTitle() == null || todoDto.getDescription() == null) {
             logger.error("Failed to create Todo: Title and description cannot be null");
             throw new IllegalArgumentException("Todo title and description cannot be null");
         }
+
+        Todo todo = modelMapper.map(todoDto, Todo.class);
 
         todo.setDateTime(LocalDateTime.now());
         Todo savedTodo = todoRepository.save(todo);
         logger.info("Successfully created Todo item with ID: {}", savedTodo.getTodoId());
 
-        return savedTodo;
+        return modelMapper.map(savedTodo, TodoDto.class);
     }
 
     /**
@@ -109,16 +117,18 @@ public class TodoService {
      * MongoDB database. If the Todo item does not exist, a
      * NotFoundException is thrown.
      *
-     * @param todo The Todo object containing updated values. It should not be null.
-     * @param todoId The unique identifier of the Todo item to update.
+     * @param todoDto The Todo object containing updated values. It should not be null.
+     * @param id The unique identifier of the Todo item to update.
      * @return The updated Todo object after saving it to the repository.
      * @throws NotFoundException if no Todo item with the specified ID exists.
      * @throws IllegalArgumentException if the provided Todo object is null.
      */
-    public Todo updateTodo(Todo todo, ObjectId todoId) {
-        if (todo == null) {
+    public TodoDto updateTodo(TodoDto todoDto, String id) {
+        if (todoDto == null) {
             throw new IllegalArgumentException("Todo cannot be null");
         }
+
+        ObjectId todoId = new ObjectId(id);
 
         logger.info("Updating Todo item with ID: {}", todoId);
 
@@ -128,6 +138,9 @@ public class TodoService {
             logger.warn("Todo item with ID {} not found", todoId);
             throw new NotFoundException("Todo item not found with ID: " + todoId);
         }
+
+        // Convert TodoDto to Todo
+        Todo todo = modelMapper.map(todoDto, Todo.class);
 
         // Update fields
         Todo existingTodo = existingTodoOptional.get();
@@ -139,7 +152,7 @@ public class TodoService {
         Todo updatedTodo = todoRepository.save(existingTodo);
         logger.info("Successfully updated Todo item with ID: {}", updatedTodo.getTodoId());
 
-        return updatedTodo;
+        return modelMapper.map(updatedTodo, TodoDto.class);
     }
 
 
@@ -150,16 +163,17 @@ public class TodoService {
      * the repository. If it exists, it deletes the item; otherwise, it
      * throws a NotFoundException.
      *
-     * @param todoId The unique identifier of the Todo item to delete.
+     * @param id The unique identifier of the Todo item to delete.
      * @throws NotFoundException if no Todo item with the specified ID exists.
      */
-    public void deleteTodoById(ObjectId todoId) {
-        if (todoId == null) {
+    public void deleteTodoById(String id) {
+        if (id == null) {
             throw new IllegalArgumentException("Todo ID cannot be null");
         }
 
-        logger.info("Attempting to delete Todo item with ID: {}", todoId);
+        logger.info("Attempting to delete Todo item with ID: {}", id);
 
+        ObjectId todoId = new ObjectId(id);
         // Check if the Todo item exists
         Optional<Todo> existingTodoOptional = todoRepository.findById(todoId);
         if (existingTodoOptional.isEmpty()) {
